@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Hoshyar",
+    "slug": "hoshyar",
+    "version": "1.0.0",
+    "scheme": "hoshyar",
+    "android": {
+      "package": "com.hoshyar.app"
+    },
+    "plugins": [
+      "expo-router",
+      "./plugins/with-accessibility-service"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "05161e05-07ea-47cc-a693-d09922ded6fa"
+      }
+    },
+    "owner": "m4874923"
+  }
+}
