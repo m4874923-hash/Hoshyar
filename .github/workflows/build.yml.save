@@ -1,4 +1,4 @@
-name: Build APK
+cat .github/workflows/build.ymlname: Build APK
 
 on:
   workflow_dispatch:
@@ -17,9 +17,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Remove yarn lock
-        run: rm -f yarn.lock
-
       - name: Setup Expo
         uses: expo/expo-github-action@v8
         with:
@@ -27,7 +24,8 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install
 
       - name: Build Android APK
         run: eas build --platform android --profile preview --non-interactive
+0
