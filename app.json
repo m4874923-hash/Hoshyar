@@ -5,11 +5,21 @@
     "version": "1.0.0",
     "scheme": "hoshyar",
     "android": {
-      "package": "com.hoshyar.app"
+      "package": "com.hoshyar.app",
+      "permissions": [
+        "RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
-      "./plugins/with-accessibility-service"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "هوشیار برای شنیدن دستورات صوتی به میکروفون نیاز دارد."
+        }
+      ],
+      "./plugins/with-accessibility-service",
+      "expo-asset"
     ],
     "extra": {
       "router": {},
