@@ -4,11 +4,24 @@
     "slug": "hoshyar",
     "version": "1.0.0",
     "scheme": "hoshyar",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#080C18"
+    },
     "android": {
       "package": "com.hoshyar.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#080C18"
+      },
       "permissions": [
         "RECORD_AUDIO"
       ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
