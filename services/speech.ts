@@ -1,11 +1,15 @@
 import * as Speech from 'expo-speech';
-import { transcribeAudio } from '@fastshot/ai';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import type { CommandLanguage } from './command-parser';
 
 export interface SpeechRecognitionResult {
   transcript: string;
   isFinal: boolean;
 }
+
+// ─────────────────────────────────────────────────────────────
+// Browser SpeechRecognition (فقط برای web preview)
+// ─────────────────────────────────────────────────────────────
 
 interface BrowserRecognitionEvent extends Event {
   results: {
@@ -33,17 +37,36 @@ interface BrowserRecognitionWindow extends Window {
   webkitSpeechRecognition?: new () => BrowserRecognition;
 }
 
-const languageCode = (language: CommandLanguage): string => (language === 'fa' ? 'fa-IR' : 'en-US');
+const languageCode = (language: CommandLanguage): string =>
+  language === 'fa' ? 'fa-IR' : 'en-US';
 
-export async function speakText(text: string, language: CommandLanguage, rate = 1, pitch = 1): Promise<void> {
+// ─────────────────────────────────────────────────────────────
+// Text-to-Speech (TTS) — حفظ شده از نسخه قبلی
+// ─────────────────────────────────────────────────────────────
+
+export async function speakText(
+  text: string,
+  language: CommandLanguage,
+  rate = 1,
+  pitch = 1,
+): Promise<void> {
   try {
     await Speech.stop();
     const voices = await Speech.getAvailableVoicesAsync();
-    const voice = voices.find((item) => item.language.toLowerCase().startsWith(language === 'fa' ? 'fa' : 'en'));
-    Speech.speak(text, { language: languageCode(language), rate, pitch, voice: voice?.identifier });
+    const voice = voices.find((item) =>
+      item.language.toLowerCase().startsWith(language === 'fa' ? 'fa' : 'en'),
+    );
+    Speech.speak(text, {
+      language: languageCode(language),
+      rate,
+      pitch,
+      voice: voice?.identifier,
+    });
   } catch (cause: unknown) {
     console.error('Text-to-speech failed', cause);
-    throw new Error(cause instanceof Error ? cause.message : 'Speech output is unavailable.');
+    throw new Error(
+      cause instanceof Error ? cause.message : 'Speech output is unavailable.',
+    );
   }
 }
 
@@ -52,9 +75,15 @@ export async function stopSpeaking(): Promise<void> {
     await Speech.stop();
   } catch (cause: unknown) {
     console.error('Stopping text-to-speech failed', cause);
-    throw new Error(cause instanceof Error ? cause.message : 'Speech output could not stop.');
+    throw new Error(
+      cause instanceof Error ? cause.message : 'Speech output could not stop.',
+    );
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Browser Speech Recognition (web only)
+// ─────────────────────────────────────────────────────────────
 
 export function startBrowserRecognition(
   language: CommandLanguage,
@@ -64,7 +93,9 @@ export function startBrowserRecognition(
 ): (() => void) | null {
   if (typeof window === 'undefined') return null;
   const recognitionWindow = window as BrowserRecognitionWindow;
-  const Recognition = recognitionWindow.SpeechRecognition ?? recognitionWindow.webkitSpeechRecognition;
+  const Recognition =
+    recognitionWindow.SpeechRecognition ??
+    recognitionWindow.webkitSpeechRecognition;
   if (!Recognition) return null;
   const recognition = new Recognition();
   recognition.lang = languageCode(language);
@@ -75,13 +106,18 @@ export function startBrowserRecognition(
     const transcript = result?.[0]?.transcript?.trim();
     if (transcript) onResult({ transcript, isFinal: result.isFinal });
   };
-  recognition.onerror = () => onError('Browser speech recognition could not capture audio.');
+  recognition.onerror = () =>
+    onError('Browser speech recognition could not capture audio.');
   recognition.onend = onEnd;
   try {
     recognition.start();
   } catch (cause: unknown) {
     console.error('Browser speech recognition failed to start', cause);
-    onError(cause instanceof Error ? cause.message : 'Browser speech recognition could not start.');
+    onError(
+      cause instanceof Error
+        ? cause.message
+        : 'Browser speech recognition could not start.',
+    );
     return null;
   }
   return () => {
@@ -93,13 +129,88 @@ export function startBrowserRecognition(
   };
 }
 
-export async function transcribeRecordedAudio(audioUri: string, language: CommandLanguage): Promise<string> {
+// ─────────────────────────────────────────────────────────────
+// Native Speech Recognition (Android/iOS) — via expo-speech-recognition
+// ─────────────────────────────────────────────────────────────
+
+export type NativeRecognitionHandlers = {
+  onResult: (result: SpeechRecognitionResult) => void;
+  onError: (message: string) => void;
+  onEnd: () => void;
+};
+
+/**
+ * شروع recognition نیتیو (streaming).
+ * این تابع با expo-speech-recognition کار می‌کنه و باید توسط
+ * یک کامپوننت (مثلاً app/voice.tsx) با useSpeechRecognitionEvent
+ * مدیریت شه.
+ *
+ * ⚠️ این تابع فقط دستور شروع رو می‌ده. برای دریافت نتایج،
+ * باید از useSpeechRecognitionEvent در کامپوننت استفاده کنی.
+ */
+export async function startNativeRecognition(
+  language: CommandLanguage,
+): Promise<void> {
   try {
-    const result = await transcribeAudio({ audioUri, language: language === 'fa' ? 'fa' : 'en' });
-    if (!result.trim()) throw new Error('The audio transcription was empty.');
-    return result.trim();
+    const permission =
+      await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!permission.granted) {
+      throw new Error('دسترسی میکروفون داده نشده است.');
+    }
+
+    // چک کن زبان fa-IR پشتیبانی می‌شه
+    const supported = await ExpoSpeechRecognitionModule.getSupportedLocales({});
+    const targetLocale = languageCode(language);
+    const isSupported = supported.locales?.some((locale) =>
+      locale.toLowerCase().startsWith(targetLocale.toLowerCase()),
+    );
+
+    if (!isSupported) {
+      console.warn(
+        `[speech] Locale ${targetLocale} در لیست زبان‌های پشتیبانی‌شده نیست.`,
+        supported.locales,
+      );
+    }
+
+    ExpoSpeechRecognitionModule.start({
+      lang: targetLocale,
+      interimResults: true,
+      continuous: false,
+      requiresOnDeviceRecognition: false,
+      addsPunctuation: false,
+    });
   } catch (cause: unknown) {
-    console.error('AI audio transcription failed', cause);
-    throw new Error(cause instanceof Error ? cause.message : 'Audio transcription failed.');
+    console.error('Native speech recognition failed to start', cause);
+    throw new Error(
+      cause instanceof Error
+        ? cause.message
+        : 'شروع تشخیص گفتار ناموفق بود.',
+    );
   }
+}
+
+export function stopNativeRecognition(): void {
+  try {
+    ExpoSpeechRecognitionModule.stop();
+  } catch (cause: unknown) {
+    console.error('Stopping native recognition failed', cause);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// transcribeRecordedAudio — stub موقت
+// ─────────────────────────────────────────────────────────────
+//
+// ⚠️ توجه: expo-speech-recognition فقط streaming ئه و
+// فایل ضبط‌شده رو transcribe نمی‌کنه. تابع زیر فعلاً
+// به عنوان stub باقی می‌مونه تا در فاز بعد، app/voice.tsx
+// به streaming مهاجرت کنه.
+//
+export async function transcribeRecordedAudio(
+  _audioUri: string,
+  _language: CommandLanguage,
+): Promise<string> {
+  throw new Error(
+    'transcribeRecordedAudio موقتاً غیرفعال ئه. لطفاً از voice overlay با streaming استفاده کن.',
+  );
 }

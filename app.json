@@ -32,7 +32,8 @@
         }
       ],
       "./plugins/with-accessibility-service",
-      "expo-asset"
+      "expo-asset",
+      "expo-speech-recognition"
     ],
     "extra": {
       "router": {},
