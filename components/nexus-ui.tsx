@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -86,6 +86,75 @@ export function VoiceOrb({ size = 64, onPress }: { size?: number; onPress?: () =
   return onPress ? <Pressable accessibilityRole="button" accessibilityLabel="Open voice assistant" onPress={onPress}>{content}</Pressable> : content;
 }
 
+export function MicOrb({
+  size = 70,
+  onPress,
+  isListening = false,
+}: {
+  size?: number;
+  onPress?: () => void;
+  isListening?: boolean;
+}) {
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    if (isListening) {
+      pulse.value = withRepeat(withTiming(1.12, { duration: 1200 }), -1, true);
+    } else {
+      pulse.value = withTiming(1, { duration: 300 });
+    }
+    return () => cancelAnimation(pulse);
+  }, [isListening, pulse]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }));
+
+  const content = (
+    <Animated.View
+      style={[
+        styles.micOrbOuter,
+        {
+          width: size + 20,
+          height: size + 20,
+          borderRadius: (size + 20) / 2,
+        },
+        animatedStyle,
+      ]}
+    >
+      <View
+        style={[
+          styles.micOrbInner,
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+          },
+          isListening && styles.micOrbInnerListening,
+        ]}
+      >
+        <Image
+          source={require("@/assets/icon.png")}
+          style={{ width: size - 8, height: size - 8, borderRadius: (size - 8) / 2 }}
+          resizeMode="cover"
+        />
+      </View>
+    </Animated.View>
+  );
+
+  return onPress ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Toggle voice capture"
+      onPress={onPress}
+    >
+      {content}
+    </Pressable>
+  ) : (
+    content
+  );
+}
+
+
 const TAB_CONFIG: Record<string, { label: string; icon: IconName; activeIcon: IconName }> = {
   index: { label: 'Assistant', icon: 'chatbubble-ellipses-outline', activeIcon: 'chatbubble-ellipses' },
   routines: { label: 'Routines', icon: 'time-outline', activeIcon: 'time' },
@@ -160,4 +229,7 @@ const styles = StyleSheet.create({
   tabLabel: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 10 },
   tabLabelActive: { color: colors.cyan },
   orbTab: { width: 76, alignItems: 'center', marginTop: -32 },
+  micOrbOuter: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A0F2E', borderWidth: 2, borderColor: '#A66CFF', shadowColor: colors.violetSoft, shadowOpacity: 0.9, shadowRadius: 22, elevation: 10 },
+  micOrbInner: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: colors.violet, borderWidth: 3, borderColor: colors.cyan },
+  micOrbInnerListening: { borderColor: colors.cyan, shadowColor: colors.cyan, shadowOpacity: 1, shadowRadius: 20 },
 });

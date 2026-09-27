@@ -2,10 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
+import { useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { colors, fonts } from '@/constants/Theme';
 import { ErrorState, LoadingState } from '@/components/screen-state';
 import { Icon, PrimaryButton, VoiceOrb, uiStyles } from '@/components/nexus-ui';
@@ -35,25 +32,23 @@ export default function VoiceScreen() {
   const [language, setLanguage] = useState<CommandLanguage>(
     preferences.voiceLanguage?.startsWith('fa') ? 'fa' : 'en',
   );
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [speechRate, setSpeechRate] = useState(preferences.speechRate ?? 1);
   const [speechPitch, setSpeechPitch] = useState(preferences.speechPitch ?? 1);
   const [screenError, setScreenError] = useState<string | null>(null);
   const [browserStop, setBrowserStop] = useState<(() => void) | null>(null);
 
-  // ─────────────────────────────────────────────────────────────
-  // Native Speech Recognition events (Android/iOS)
-  // ─────────────────────────────────────────────────────────────
   useSpeechRecognitionEvent('start', () => {
+    console.log('[HOSHYAR STT] EVENT: start');
     setListening(true);
-    setTranscript(language === 'fa' ? 'در حال شنیدن...' : 'Listening...');
   });
 
   useSpeechRecognitionEvent('end', () => {
+    console.log('[HOSHYAR STT] EVENT: end');
     setListening(false);
   });
 
   useSpeechRecognitionEvent('result', (event) => {
+    console.log('[HOSHYAR STT] EVENT: result', JSON.stringify(event));
     const text = event.results?.[0]?.transcript?.trim();
     if (!text) return;
     setTranscript(text);
@@ -63,13 +58,8 @@ export default function VoiceScreen() {
   });
 
   useSpeechRecognitionEvent('error', (event) => {
-    console.error('Native speech recognition error', event);
-    const message =
-      event.message ??
-      (language === 'fa'
-        ? 'خطا در تشخیص گفتار.'
-        : 'Speech recognition error.');
-    setScreenError(message);
+    console.error('[HOSHYAR STT] EVENT: error', event.error, event.message);
+    setScreenError(event.message ?? event.error ?? 'خطای تشخیص گفتار');
     setListening(false);
   });
 
@@ -77,7 +67,7 @@ export default function VoiceScreen() {
     return () => {
       browserStop?.();
       if (Platform.OS !== 'web') {
-        stopNativeRecognition();
+        void stopNativeRecognition();
       }
     };
   }, [browserStop]);
@@ -85,9 +75,13 @@ export default function VoiceScreen() {
   const close = useCallback(() => router.back(), [router]);
 
   const startCapture = useCallback(async () => {
-    if (listening) return; // جلوگیری از start تکراری
+    if (listening) {
+      console.log('[HOSHYAR STT] ALREADY LISTENING, skip');
+      return;
+    }
     setScreenError(null);
     setTranscript(language === 'fa' ? 'در حال شنیدن...' : 'Listening...');
+
     try {
       if (Platform.OS === 'web') {
         const stop = startBrowserRecognition(
@@ -99,23 +93,16 @@ export default function VoiceScreen() {
           setScreenError,
           () => setListening(false),
         );
-        if (!stop) {
-          throw new Error(
-            'This browser does not provide SpeechRecognition. Use the text field or a native Android build.',
-          );
-        }
+        if (!stop) throw new Error('Browser SpeechRecognition not available.');
         setBrowserStop(() => stop);
         setListening(true);
         return;
       }
 
-      // Native (Android/iOS)
       await startNativeRecognition(language);
     } catch (cause: unknown) {
-      console.error('Voice capture failed to start', cause);
-      setScreenError(
-        cause instanceof Error ? cause.message : 'Voice capture could not start.',
-      );
+      console.error('[HOSHYAR STT] START CAPTURE ERROR:', cause);
+      setScreenError(cause instanceof Error ? cause.message : 'خطا در شروع ضبط');
       setListening(false);
     }
   }, [language, listening]);
@@ -128,17 +115,11 @@ export default function VoiceScreen() {
         setListening(false);
         return;
       }
-      stopNativeRecognition();
+      await stopNativeRecognition();
       setListening(false);
     } catch (cause: unknown) {
-      console.error('Voice capture failed to stop', cause);
-      setScreenError(
-        cause instanceof Error
-          ? cause.message
-          : 'The voice recording could not be stopped.',
-      );
-    } finally {
-      setIsTranscribing(false);
+      console.error('[HOSHYAR STT] STOP CAPTURE ERROR:', cause);
+      setScreenError(cause instanceof Error ? cause.message : 'خطا در توقف ضبط');
     }
   }, [browserStop]);
 
@@ -160,7 +141,7 @@ export default function VoiceScreen() {
         setScreenError(
           language === 'fa'
             ? 'هنوز دستوری دریافت نشده است.'
-            : 'No command has been captured yet.',
+            : 'No command captured yet.',
         );
         return;
       }
@@ -168,11 +149,7 @@ export default function VoiceScreen() {
       router.back();
     } catch (cause: unknown) {
       console.error('Voice command handoff failed', cause);
-      setScreenError(
-        cause instanceof Error
-          ? cause.message
-          : 'The command could not be sent to Assistant.',
-      );
+      setScreenError(cause instanceof Error ? cause.message : 'خطا در ارسال دستور');
     }
   }, [language, router, setDraftCommand, transcript]);
 
@@ -181,9 +158,7 @@ export default function VoiceScreen() {
       (cause: unknown) => {
         console.error('Voice response failed', cause);
         setScreenError(
-          cause instanceof Error
-            ? cause.message
-            : 'Text-to-speech is unavailable.',
+          cause instanceof Error ? cause.message : 'Text-to-speech unavailable',
         );
       },
     );
@@ -266,11 +241,7 @@ export default function VoiceScreen() {
             />
           ))}
         </View>
-        {isTranscribing ? (
-          <ActivityIndicator color={colors.cyan} />
-        ) : (
-          <Text style={styles.transcript}>{transcript}</Text>
-        )}
+        <Text style={styles.transcript}>{transcript}</Text>
         <Text style={styles.hint}>
           Tap the orb to {listening ? 'stop' : 'start capture'}
         </Text>

@@ -41,7 +41,7 @@ const languageCode = (language: CommandLanguage): string =>
   language === 'fa' ? 'fa-IR' : 'en-US';
 
 // ─────────────────────────────────────────────────────────────
-// Text-to-Speech (TTS) — حفظ شده از نسخه قبلی
+// Text-to-Speech (TTS)
 // ─────────────────────────────────────────────────────────────
 
 export async function speakText(
@@ -130,57 +130,35 @@ export function startBrowserRecognition(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Native Speech Recognition (Android/iOS) — via expo-speech-recognition
+// Native Speech Recognition (Android/iOS)
 // ─────────────────────────────────────────────────────────────
 
-export type NativeRecognitionHandlers = {
-  onResult: (result: SpeechRecognitionResult) => void;
-  onError: (message: string) => void;
-  onEnd: () => void;
-};
-
-/**
- * شروع recognition نیتیو (streaming).
- * این تابع با expo-speech-recognition کار می‌کنه و باید توسط
- * یک کامپوننت (مثلاً app/voice.tsx) با useSpeechRecognitionEvent
- * مدیریت شه.
- *
- * ⚠️ این تابع فقط دستور شروع رو می‌ده. برای دریافت نتایج،
- * باید از useSpeechRecognitionEvent در کامپوننت استفاده کنی.
- */
 export async function startNativeRecognition(
   language: CommandLanguage,
 ): Promise<void> {
   try {
+    console.log('[HOSHYAR STT] PERMISSION: requesting...');
     const permission =
       await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    console.log('[HOSHYAR STT] PERMISSION:', permission);
+
     if (!permission.granted) {
       throw new Error('دسترسی میکروفون داده نشده است.');
     }
 
-    // چک کن زبان fa-IR پشتیبانی می‌شه
-    const supported = await ExpoSpeechRecognitionModule.getSupportedLocales({});
-    const targetLocale = languageCode(language);
-    const isSupported = supported.locales?.some((locale) =>
-      locale.toLowerCase().startsWith(targetLocale.toLowerCase()),
-    );
-
-    if (!isSupported) {
-      console.warn(
-        `[speech] Locale ${targetLocale} در لیست زبان‌های پشتیبانی‌شده نیست.`,
-        supported.locales,
-      );
-    }
+    const lang = languageCode(language);
+    const stateBefore = await ExpoSpeechRecognitionModule.getStateAsync();
+    console.log('[HOSHYAR STT] STATE BEFORE START:', stateBefore);
+    console.log('[HOSHYAR STT] START with lang:', lang);
 
     ExpoSpeechRecognitionModule.start({
-      lang: targetLocale,
+      lang,
       interimResults: true,
       continuous: false,
-      requiresOnDeviceRecognition: false,
-      addsPunctuation: false,
+      maxAlternatives: 1,
     });
   } catch (cause: unknown) {
-    console.error('Native speech recognition failed to start', cause);
+    console.error('[HOSHYAR STT] START ERROR:', cause);
     throw new Error(
       cause instanceof Error
         ? cause.message
@@ -189,23 +167,26 @@ export async function startNativeRecognition(
   }
 }
 
-export function stopNativeRecognition(): void {
+export async function stopNativeRecognition(): Promise<void> {
   try {
-    ExpoSpeechRecognitionModule.stop();
+    const state = await ExpoSpeechRecognitionModule.getStateAsync();
+    console.log('[HOSHYAR STT] STATE BEFORE STOP:', state);
+
+    if (state === 'recognizing' || state === 'starting') {
+      console.log('[HOSHYAR STT] STOP');
+      ExpoSpeechRecognitionModule.stop();
+    } else {
+      console.log('[HOSHYAR STT] SKIP STOP (state:', state, ')');
+    }
   } catch (cause: unknown) {
-    console.error('Stopping native recognition failed', cause);
+    console.error('[HOSHYAR STT] STOP ERROR:', cause);
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// transcribeRecordedAudio — stub موقت
+// transcribeRecordedAudio — stub
 // ─────────────────────────────────────────────────────────────
-//
-// ⚠️ توجه: expo-speech-recognition فقط streaming ئه و
-// فایل ضبط‌شده رو transcribe نمی‌کنه. تابع زیر فعلاً
-// به عنوان stub باقی می‌مونه تا در فاز بعد، app/voice.tsx
-// به streaming مهاجرت کنه.
-//
+
 export async function transcribeRecordedAudio(
   _audioUri: string,
   _language: CommandLanguage,
