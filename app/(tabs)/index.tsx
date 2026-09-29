@@ -152,6 +152,10 @@ export default function AssistantScreen() {
       const result = executeCommand(intent.command, (step, total, label) => {
         appendDialogue({ role: 'assistant', text: `Step ${step + 1}/${total}: ${label}` });
       });
+      if (!result.task) {
+        setScreenError('اجرای این دستور ممکن نیست.');
+        return;
+      }
       setActiveTask(result.task);
       result.task.promise
         .then(() => {
