@@ -1,69 +1,63 @@
 # Tasks — Hoshyar
 
 ## CURRENT TASK
-**Establish Multi-Agent Project Control System**
+Setup AI Loop for Multi-Model Collaboration (ChatGPT + DeepSeek + Grok)
 
 ## STATUS
 IN PROGRESS
 
 ## OWNER
-ARCHITECT / ORCHESTRATOR
+ARCHITECT / ORCHESTRATOR (ChatGPT)
 
 ## ALLOWED FILES
-- `.ai/PROJECT.md`
-- `.ai/ARCHITECTURE.md`
-- `.ai/AGENTS.md`
-- `.ai/TASKS.md`
-- `.ai/DECISIONS.md`
-- `.ai/EXPERIMENTS.md`
-- `.ai/FAILURES.md`
-- `.ai/CHANGELOG.md`
+- .ai/AGENTS.md (update)
+- .ai/AI_LOOP.md (create)
+- .ai/TASKS.md (update)
+- .ai/DECISIONS.md (update)
 
 ## OBJECTIVE
-Create the `.ai/` directory with 8 machine-readable control files to manage multi-agent development of Hoshyar.
+Define roles, boundaries, flow, and stop conditions for the multi-model AI Loop.
 
 ## SUCCESS CRITERIA
-- [ ] All 8 files exist under `.ai/`
-- [ ] Each file has a clear, machine-readable structure
-- [ ] No file outside `.ai/` is modified
-- [ ] `git diff --stat` shows only `.ai/` additions
-- [ ] `git status` is clean except for `.ai/`
+- [ ] AGENTS.md updated with 4 model roles
+- [ ] AI_LOOP.md created with full flow
+- [ ] TASKS.md current task updated
+- [ ] DECISIONS.md has entry for loop setup
+- [ ] No app code touched
+- [ ] No build.yml touched
+- [ ] No token touched
 
 ## TEST PLAN
+- Verify all .ai/ files exist
+- git diff --stat shows only .ai/
+
 ## BLOCKERS
 None
 
 ## NEXT ACTION
-Create all 8 files, then report to ARCHITECT.
+- Hand off to Grok for review
 
 ---
 
-## BACKLOG (not yet scheduled)
+## BACKLOG
 
-### Phase 3: UI Redesign (app/(tabs)/index.tsx)
-- ChatGPT-like UI
-- Compact header with logo + status
-- Remove NEXT UP card
-- MicOrb in bottom bar
-- Preserve all logic
+### Phase 3: STT Proof of Concept
+- Test STT in Gspace (Huawei device)
+- If pass -> v2 with Google STT
+- If fail -> Vosk
 
-### Phase 4: Remove @fastshot/ai
-- Remove from `services/ai-intent.ts`
-- Remove from `package.json`
-- Replace AI fallback with online LLM or local model
+### Phase 4: Hoshyar v2
+- New project structure
+- Conversation UI (ChatGPT-like)
+- Real STT + Parser + Executor
+- No fake data
 
-### Phase 5: Fix TypeScript errors
-- `app/(tabs)/index.tsx:155-156`
-- TaskRun possibly undefined
+### Phase 5: Remove @fastshot/ai
 
-### Phase 6: Accessibility Service real implementation
-- canRetrieveWindowContent
-- clickText, findText, typeText
+### Phase 6: Fix TypeScript errors
 
-### Phase 7: Wake Word
-- Porcupine or alternative
-- Background operation
+### Phase 7: Accessibility Service real implementation
 
-### Phase 8: LLM integration
-- Free conversation
-- Online or local
+### Phase 8: Wake Word
+
+### Phase 9: LLM integration

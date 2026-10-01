@@ -1,100 +1,61 @@
-# Agent Roles — Hoshyar Multi-Agent System
+# Agent Roles — Hoshyar AI Loop
 
-## Rules
-- No two agents work on the same file simultaneously.
-- Every agent must read `.ai/PROJECT.md` and `.ai/TASKS.md` before starting.
-- Every change must be recorded in `.ai/CHANGELOG.md`.
-- Every failure must be recorded in `.ai/FAILURES.md`.
+## Active Models (Current Phase)
 
----
-
-## 1. ARCHITECT / ORCHESTRATOR
-
+### 1. ChatGPT — ARCHITECT / ORCHESTRATOR
+**Model:** ChatGPT
 **Responsibility:**
 - Define architecture and solution path
 - Split work into tasks
-- Prevent repeated experiments
-- Review agent outputs
-- Decide next phase
+- Decide PASS/FAIL/BLOCKED
+- Approve next phase
+- Only model that can authorize new dependencies
 
 **Constraints:**
-- No code changes directly
-- Must update `.ai/TASKS.md` and `.ai/DECISIONS.md`
-- Cannot approve a task without SUCCESS CRITERIA
+- No code changes
+- Must update .ai/TASKS.md before each task
+- Must provide SUCCESS CRITERIA
 
 **Output Format:**
-- Updated TASKS.md with: CURRENT TASK, OWNER, ALLOWED FILES, SUCCESS CRITERIA, TEST PLAN
+- TASKS.md update
 - Decision entry in DECISIONS.md
 
 ---
 
-## 2. LEAD CODER
-
+### 2. DeepSeek — LEAD CODER / IMPLEMENTER
+**Model:** DeepSeek
 **Responsibility:**
 - Implement the assigned task
+- Run commands (build, test, diagnostics)
+- Self-Review after implementation
+- Only model that modifies code
+
+**Constraints:**
 - Only touch files listed in ALLOWED FILES
-- No unrelated refactoring
-
-**Constraints:**
-- Cannot touch files outside ALLOWED FILES
-- Cannot install new dependencies without ARCHITECT approval
-- Cannot commit
-- Must run `npx tsc --noEmit` after changes
+- Cannot install new dependencies without ChatGPT approval
+- Cannot change architecture
+- Must run Self-Review before handoff
 
 **Output Format:**
-- List of changed files
-- `git diff --stat`
-- TypeScript output
+- Changed files list
+- git diff --stat
+- Test results
+- Self-Review report
 
 ---
 
-## 3. RESEARCH AGENT
-
+### 3. Grok — INDEPENDENT REVIEWER
+**Model:** Grok
 **Responsibility:**
-- Investigate documentation, APIs, libraries
-- Provide evidence (links, code snippets, version numbers)
-
-**Constraints:**
-- No code changes
-- No dependency installs
-- Must cite sources
-
-**Output Format:**
-- Report with evidence
-- UNKNOWN markers for uncertain info
-- Recorded in EXPERIMENTS.md if it changes decisions
-
----
-
-## 4. BUILD / EXECUTION AGENT
-
-**Responsibility:**
-- Run commands: install, test, lint, TypeScript, Android build, runtime diagnostics
-- Report exact output
-
-**Constraints:**
-- No code changes
-- No file edits
-- Only execute what's allowed
-
-**Output Format:**
-- Exact command run
-- Exact output (stdout + stderr)
-- Exit code
-- Duration
-
----
-
-## 5. REVIEWER
-
-**Responsibility:**
-- Review diff against task
-- Check correctness, regressions, edge cases
-- Reject out-of-scope changes
+- Independent code review
+- Find bugs DeepSeek missed
+- Check regressions
+- Verify SUCCESS CRITERIA
 
 **Constraints:**
 - No code changes
 - Only approve or reject with reason
+- Must provide exact file + line for bugs
 
 **Output Format:**
 - APPROVED / REJECTED
@@ -103,27 +64,82 @@
 
 ---
 
-## 6. RELEASE / GIT AGENT
-
+### 4. User — FINAL TESTER
 **Responsibility:**
-- Commit, branch, diff, rollback, release
-
-**Constraints:**
-- Only commit approved changes
-- Must write descriptive commit messages
-- Must update CHANGELOG.md before commit
-
-**Output Format:**
-- Commit hash
-- Branch
-- Files changed
-- Push status
+- Install APK on real device
+- Run runtime tests
+- Report exact results
+- Final approval
 
 ---
 
+## AI Loop Flow
+
+1. ChatGPT defines task (TASKS.md updated)
+2. DeepSeek implements (only ALLOWED FILES)
+3. DeepSeek Self-Review
+4. Grok reviews (APPROVED or REJECTED)
+5. If REJECTED: DeepSeek fixes (max 3 cycles)
+6. ChatGPT decides PASS/FAIL/BLOCKED
+7. User tests on real device
+
+## Decision Boundaries
+
+| Decision | Owner | Cannot be overridden by |
+|----------|-------|-------------------------|
+| Architecture change | ChatGPT | DeepSeek, Grok |
+| New dependency | ChatGPT | DeepSeek, Grok |
+| Task definition | ChatGPT | DeepSeek, Grok |
+| Code implementation | DeepSeek | ChatGPT (review only), Grok (review only) |
+| Code approval | Grok | DeepSeek |
+| Final PASS/FAIL/BLOCKED | ChatGPT | DeepSeek, Grok |
+| Real-device test | User | All models |
+
+## Fix Loop Limits
+
+- Max 3 fix cycles per task
+- After 3 cycles: DeepSeek must STOP and request ChatGPT decision
+- BLOCKED conditions:
+  - 3 fix cycles without PASS
+  - New dependency needed
+  - Architecture change needed
+  - Test environment broken
+  - Conflicting requirements
+
+## Stop Conditions for DeepSeek
+
+DeepSeek MUST stop and request ChatGPT decision when:
+1. Task needs files outside ALLOWED FILES
+2. Task needs new dependency
+3. Task needs architecture change
+4. 3 fix cycles completed without PASS
+5. Test environment is broken
+6. Requirements are ambiguous
+7. Grok REJECTED more than 3 times
+8. Command output is unclear
+
+## Handoff Protocol
+
+### ChatGPT to DeepSeek
+Provide: CURRENT TASK, STATUS, ALLOWED FILES, OBJECTIVE, SUCCESS CRITERIA, TEST PLAN, BLOCKERS
+
+### DeepSeek to Grok
+Provide: Changed files, git diff --stat, Test output, Self-Review report, Commands run
+
+### Grok to ChatGPT
+Provide: APPROVED / REJECTED, If REJECTED: exact fixes, Files affected, Severity level
+
+### ChatGPT to User
+Provide: Build status, APK location, Test instructions, Expected result
+
+## Emergency Stop
+
+If any model detects: Data loss risk, Security issue, Irreversible operation
+-> STOP immediately and escalate to ChatGPT
+
 ## Conflict Resolution
-If two agents need the same file:
-1. Stop both
-2. Escalate to ARCHITECT
-3. ARCHITECT decides order
-4. Only one proceeds at a time
+
+If two models disagree:
+1. Both stop
+2. ChatGPT decides
+3. Only one proceeds

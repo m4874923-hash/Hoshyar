@@ -54,3 +54,25 @@ DATE: / DECISION: / REASON: / ALTERNATIVES: / CONSEQUENCE:
 - External tool (rejected - Termux-only)
 **CONSEQUENCE:**
 - All future changes go through .ai/ workflow.
+
+---
+
+## 2026-10-01 - Setup AI Loop for Multi-Model Collaboration
+
+**DATE:** 2026-10-01
+**DECISION:** Use 3-model AI Loop (ChatGPT + DeepSeek + Grok) with strict roles.
+**REASON:**
+- Single-model development led to repeated bugs
+- Independent review catches more issues
+- Clear role separation prevents conflicts
+- Max 3 fix cycles prevents infinite loops
+**ALTERNATIVES:**
+- Single model (rejected - limited perspective)
+- 2 models (rejected - no independent review)
+- 4+ models (rejected - too much coordination)
+**CONSEQUENCE:**
+- ChatGPT: Architecture + Orchestration
+- DeepSeek: Coding + Implementation
+- Grok: Independent Review
+- User: Real device testing
+- Max 3 fix cycles before BLOCKED
